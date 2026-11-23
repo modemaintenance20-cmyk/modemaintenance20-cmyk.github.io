@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Here Premium</title>
+<meta name="description" content="A premium camera app with thousands of looks. Old paintings, new looks.">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--fg:#fff;--soft:#8a8a8a;--line:#262626;--mono:"Space Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,"Courier New",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:12px;letter-spacing:.2px;overflow:hidden;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+a,button{color:inherit;font:inherit;background:none;border:0;cursor:pointer;text-decoration:none;padding:0}
+button:focus-visible,a:focus-visible,.tile:focus-visible{outline:1px dashed #fff;outline-offset:3px}
+
+/* ---------- header ---------- */
+header{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 22px 26px;pointer-events:none;opacity:0;transition:opacity .8s;background:linear-gradient(#000 45%,transparent)}
+body.ready header{opacity:1}
+header>*{pointer-events:auto}
+.brand{text-transform:uppercase;letter-spacing:.6px}
+.views{display:flex;gap:10px;text-transform:uppercase}
+.views button[aria-pressed=true]{text-decoration:underline;text-underline-offset:3px}
+.right{display:flex;gap:18px;text-transform:uppercase}
+.right button[aria-pressed=true]{text-decoration:underline;text-underline-offset:3px}
+.filtros{position:fixed;left:22px;top:52px;z-index:30;text-transform:uppercase;opacity:0;transition:opacity .8s}
+body.ready .filtros{opacity:1}
+@media(max-width:760px){
+  header{flex-wrap:wrap;padding:12px 14px;row-gap:8px}
+  .brand{flex:1 0 60%}.right{gap:12px}
+  .views{order:3;width:100%;justify-content:space-between}
+  .filtros{left:14px;top:70px}
+}
+
+/* ---------- intro: typed text, then a little pyramid of looks ---------- */
+#intro{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;transition:opacity .9s}
+#intro.gone{opacity:0;pointer-events:none}
+#typed{max-width:360px;text-align:center;line-height:1.5;padding:0 24px;min-height:70px;font-size:12px}
+#typed i{display:inline-block;width:6px;height:12px;background:#fff;vertical-align:-2px;margin-left:1px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+#skip{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);text-transform:uppercase}
+#pyr{position:absolute;left:50%;top:50%;width:0;height:0}
+#pyr .pt{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;transform:scale(0);opacity:0;transition:transform .5s cubic-bezier(.2,1.4,.4,1),opacity .3s;overflow:hidden;border-radius:2px}
+#pyr .pt.on{transform:scale(1);opacity:1}
+#pyr.out .pt{transition:transform .9s cubic-bezier(.6,0,.2,1),opacity .9s;transform:scale(3.2) translate(var(--dx),var(--dy));opacity:0}
+
+/* ---------- the field: small looks floating on an endless board you drag around ---------- */
+#field{position:fixed;inset:0;overflow:hidden;cursor:grab;touch-action:none;opacity:0;transition:opacity .6s;user-select:none;-webkit-user-select:none}
+body.ready.v-grid #field{opacity:1}
+#field.drag{cursor:grabbing}
+.tile{position:absolute;left:0;top:0;will-change:transform;display:block;margin:0}
+.tile .lab{position:absolute;left:0;bottom:calc(100% + 5px);display:flex;gap:8px;white-space:nowrap;font-size:9.5px;color:var(--soft);text-transform:uppercase;pointer-events:none}
+.tile .lab b{font-weight:400;color:#fff}
+.pic{position:relative;overflow:hidden;background:#111;width:100%;height:100%;border-radius:2px}
+.pic img{display:block;width:100%;height:100%;object-fit:cover}
+.pic::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,var(--vig,0)) 100%)}
+.pic::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:var(--grain,0);mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>")}
+.pic .tint{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:soft-light;background:var(--tint,transparent)}
+.fallback{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:6px;color:#777;font-size:9px;background:linear-gradient(135deg,#1a1a1a,#0a0a0a)}
+.tile{opacity:0;transition:opacity .7s}
+body.ready .tile{opacity:1}
+
+/* ---------- list view ---------- */
+#listv{position:fixed;inset:0;z-index:10;overflow:auto;padding:96px 22px 60px;display:none}
+body.v-rows #listv{display:block}
+#listv .wrap{max-width:760px;margin:0 auto}
+#listv h2{font-size:12px;font-weight:400;margin:0 0 22px;text-transform:uppercase}
+.search{display:flex;gap:10px;margin-bottom:18px}
+.search input{flex:1;background:none;border:0;border-bottom:1px solid #fff;color:#fff;font:inherit;padding:8px 0;outline:none;border-radius:0}
+.search input::placeholder{color:var(--soft)}
+.chips{display:none;flex-wrap:wrap;gap:8px 18px;margin:0 0 18px;text-transform:uppercase}
+.chips.open{display:flex}
+.chips label{cursor:pointer}.chips input{display:none}
+.chips span::before{content:"[ ] "}.chips input:checked+span::before{content:"[x] "}
+.count{color:var(--soft);margin:0 0 14px}
+.row{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line);cursor:pointer;text-align:left;width:100%}
+.row:hover{background:#0d0d0d}
+.row .n{color:var(--soft)}.row .s{color:var(--soft);text-align:right}
+
+/* ---------- gallery view ---------- */
+#galv{position:fixed;inset:0;z-index:10;display:none;place-items:center;padding:70px 20px 70px}
+body.v-gal #galv{display:grid}
+#galv .big{position:relative;width:min(80vw,calc((100vh - 190px)*.8),520px);aspect-ratio:4/5;cursor:pointer}
+#galv .cap{position:absolute;left:0;right:0;top:100%;margin-top:12px;display:flex;justify-content:space-between;text-transform:uppercase;font-size:10.5px}
+#galv .cap span:last-child{color:var(--soft)}
+.arrow{position:absolute;top:50%;transform:translateY(-50%);text-transform:uppercase;padding:20px}
+.arrow.l{left:12px}.arrow.r{right:12px}
+
+/* ---------- detail and about ---------- */
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.96);display:none;place-items:center;padding:40px 20px}
+.sheet.open{display:grid}
+.sheet .box{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:560px}
+.sheet .pic{width:min(86vw,calc((100vh - 220px)*.8),520px);height:auto;aspect-ratio:4/5}
+.sheet .meta{display:flex;gap:18px;text-transform:uppercase;flex-wrap:wrap;justify-content:center}.sheet .meta span:last-child{color:var(--soft)}
+.sheet .x{position:absolute;right:22px;top:16px;text-transform:uppercase}
+.sheet .hold{text-transform:uppercase;border:1px solid #fff;padding:9px 14px;user-select:none;touch-action:none}
+.sheet p{line-height:1.7;color:#cfcfcf;max-width:520px;margin:0 0 12px}
+#about .box{align-items:flex-start}
+footer{position:fixed;left:22px;bottom:14px;z-index:20;color:var(--soft);font-size:9.5px;text-transform:uppercase;opacity:0;transition:opacity .8s;pointer-events:none;max-width:70vw}
+body.ready footer{opacity:1}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body class="v-grid">
+
+<div id="intro">
+  <div id="typed" aria-live="polite"></div>
+  <div id="pyr" aria-hidden="true"></div>
+  <button id="skip" data-t="skipb">[ Skip ]</button>
+</div>
+
+<header>
+  <a class="brand" href="#" id="home">Here Premium</a>
+  <div class="views" role="group" aria-label="View">
+    <button data-view="grid" aria-pressed="true" data-t="grid">[ Grid ]</button>
+    <button data-view="rows" aria-pressed="false" data-t="list">[ List ]</button>
+    <button data-view="gal" aria-pressed="false" data-t="gallery">[ Gallery ]</button>
+  </div>
+  <div class="right">
+    <button id="aboutb" data-t="about">About</button>
+    <a href="https://play.google.com/store/apps/details?id=com.filters.herepremium" data-t="get">Get the app</a>
+    <span><button data-lang="en" aria-pressed="true">EN</button> / <button data-lang="es" aria-pressed="false">ES</button></span>
+  </div>
+</header>
+<button class="filtros" id="filtb" data-t="filters">Filters [+]</button>
+<footer id="foot"></footer>
+
+<div id="field" aria-label="Looks"></div>
+
+<section id="listv" aria-label="List">
+  <div class="wrap">
+    <h2 data-t="listh">Here Premium - List</h2>
+    <div class="search"><input id="q" type="search" placeholder="Search look" data-tp="search"></div>
+    <div class="chips" id="chips"></div>
+    <p class="count" id="count"></p>
+    <div id="rows"></div>
+  </div>
+</section>
+
+<section id="galv" aria-label="Gallery">
+  <button class="arrow l" id="gp" aria-label="Previous">&lt;</button>
+  <div class="big" id="gbig"></div>
+  <button class="arrow r" id="gn" aria-label="Next">&gt;</button>
+</section>
+
+<div class="sheet" id="obra" role="dialog" aria-modal="true"><button class="x" id="ox" data-t="close">[ Close ]</button><div class="box" id="obox"></div></div>
+<div class="sheet" id="about" role="dialog" aria-modal="true"><button class="x" id="ax" data-t="close">[ Close ]</button><div class="box"><p data-t="aboutP1"></p><p data-t="aboutP2"></p><p><a href="https://play.google.com/store/apps/details?id=com.filters.herepremium" style="text-decoration:underline" data-t="get">Get the app</a></p></div></div>
+
+<script>
+/* ---- the paintings (public domain, loaded from Wikimedia Commons by file name) ---- */
+const W = f => "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(f) + "?width=700";
+const ART = [
+  ["Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg","Mona Lisa","Leonardo da Vinci, c. 1503"],
+  ["Girl_with_a_Pearl_Earring.jpg","Girl with a Pearl Earring","Johannes Vermeer, c. 1665"],
+  ["Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg","The Starry Night","Vincent van Gogh, 1889"],
+  ["Tsunami_by_hokusai_19th_century.jpg","The Great Wave","Katsushika Hokusai, c. 1831"],
+  ["Claude_Monet,_Impression,_soleil_levant.jpg","Impression, Sunrise","Claude Monet, 1872"],
+  ["Caspar_David_Friedrich_-_Wanderer_above_the_sea_of_fog.jpg","Wanderer above the Sea of Fog","Caspar David Friedrich, c. 1818"],
+  ["Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg","The Birth of Venus","Sandro Botticelli, c. 1485"],
+  ["Georges_Seurat_-_A_Sunday_on_La_Grande_Jatte_--_1884_-_Google_Art_Project.jpg","A Sunday on La Grande Jatte","Georges Seurat, 1884"],
+  ["The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg","The Kiss","Gustav Klimt, 1908"],
+  ["Johannes_Vermeer_-_Het_melkmeisje_-_Google_Art_Project.jpg","The Milkmaid","Johannes Vermeer, c. 1658"],
+  ["Vincent_van_Gogh_-_Sunflowers_-_VGM_F458.jpg","Sunflowers","Vincent van Gogh, 1889"],
+  ["Hans_Holbein_the_Younger_-_The_Ambassadors_-_Google_Art_Project.jpg","The Ambassadors","Hans Holbein the Younger, 1533"]
+];
+/* a look = CSS filter + grain + vignette + tint (preview only, made in the browser) */
+const LOOKS = [
+  {n:"Gold 200",     tag:"warm",  f:"sepia(.35) saturate(1.35) contrast(1.05) brightness(1.04) hue-rotate(-8deg)", g:.35, v:.35, t:"rgba(255,170,60,.35)"},
+  {n:"Silver Mono",  tag:"mono",  f:"grayscale(1) contrast(1.25) brightness(1.02)", g:.5, v:.45, t:"transparent"},
+  {n:"Instant Fade", tag:"faded", f:"sepia(.2) saturate(.8) contrast(.85) brightness(1.12)", g:.3, v:.2, t:"rgba(120,200,220,.3)"},
+  {n:"Velvia Pop",   tag:"bold",  f:"saturate(1.9) contrast(1.15) brightness(.98)", g:.2, v:.25, t:"transparent"},
+  {n:"Cross Process",tag:"bold",  f:"saturate(1.5) contrast(1.2) hue-rotate(22deg) brightness(1.02)", g:.35, v:.3, t:"rgba(0,255,160,.25)"},
+  {n:"Toy Lens",     tag:"dark",  f:"saturate(1.3) contrast(1.3) brightness(1.05)", g:.4, v:.8, t:"rgba(255,80,120,.2)"},
+  {n:"Cinema Teal",  tag:"dark",  f:"saturate(1.1) contrast(1.2) hue-rotate(-12deg) brightness(.95)", g:.25, v:.5, t:"rgba(0,140,160,.4)"},
+  {n:"Seventies",    tag:"warm",  f:"sepia(.5) saturate(1.2) contrast(.95) brightness(1.05) hue-rotate(-14deg)", g:.45, v:.4, t:"rgba(255,120,40,.35)"},
+  {n:"Noir 400",     tag:"mono",  f:"grayscale(1) contrast(1.6) brightness(.9)", g:.6, v:.6, t:"transparent"},
+  {n:"Dream Soft",   tag:"faded", f:"saturate(1.1) contrast(.85) brightness(1.15) blur(.4px)", g:.2, v:.2, t:"rgba(255,200,230,.35)"},
+  {n:"Sun Faded",    tag:"faded", f:"sepia(.3) saturate(.7) contrast(.9) brightness(1.1)", g:.35, v:.25, t:"rgba(255,230,160,.3)"},
+  {n:"Night Flash",  tag:"dark",  f:"saturate(1.2) contrast(1.4) brightness(.85)", g:.5, v:.7, t:"rgba(60,60,255,.25)"}
+];
+const TAGS = {en:{warm:"Warm",mono:"Mono",faded:"Faded",bold:"Bold",dark:"Dark"},es:{warm:"Cálido",mono:"Mono",faded:"Desvaído",bold:"Intenso",dark:"Oscuro"}};
+const T = {
+ en:{skipb:"[ Skip ]",grid:"[ Grid ]",list:"[ List ]",gallery:"[ Gallery ]",about:"About",get:"Get the app",filters:"Filters [+]",close:"[ Close ]",listh:"Here Premium - List",search:"Search look",
+  found:n=>n+" looks found.",orig:"[ Hold for original ]",foot:"Previews made in the browser. Paintings: Wikimedia Commons, public domain.",
+  aboutP1:"Here Premium turns your phone into a pocket full of cameras: thousands of looks inspired by real cameras and films. Choose a look, see it before you shoot, keep your photos in a private library, and share a room with friends for a few hours.",
+  aboutP2:"The paintings here belong to everyone. Each one is shown with a look applied, for preview only.",
+  intro:"Between a painting and a photograph there is only a look. Here Premium has two thousand of them."},
+ es:{skipb:"[ Omitir ]",grid:"[ Grilla ]",list:"[ Listado ]",gallery:"[ Galería ]",about:"Sobre el proyecto",get:"Descargar la app",filters:"Filtros [+]",close:"[ Cerrar ]",listh:"Here Premium - Listado",search:"Buscar look",
+  found:n=>n+" looks encontrados.",orig:"[ Mantén para ver el original ]",foot:"Vistas previas hechas en el navegador. Pinturas: Wikimedia Commons, dominio público.",
+  aboutP1:"Here Premium convierte tu teléfono en un bolsillo lleno de cámaras: miles de looks inspirados en cámaras y películas reales. Elige un look, míralo antes de disparar, guarda tus fotos en una biblioteca privada y comparte una sala con amigos por unas horas.",
+  aboutP2:"Las pinturas de aquí son de todos. Cada una se muestra con un look aplicado, solo como vista previa.",
+  intro:"Entre una pintura y una fotografía solo hay un look. Here Premium tiene dos mil."}
+};
+let lang = (navigator.language||"en").toLowerCase().startsWith("es") ? "es" : "en";
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+
+/* 48 works: every painting shown with 4 different looks */
+const items = [];
+for (let i = 0; i < 48; i++) items.push({ i, a: ART[i % ART.length], l: LOOKS[(i * 5 + Math.floor(i / ART.length) * 3) % LOOKS.length] });
+const num = i => String(i + 1).padStart(3, "0");
+
+function pic(it, orig) {
+  const l = it.l, [file, title] = it.a;
+  const st = orig ? "" : `style="--grain:${l.g};--vig:${l.v};--tint:${l.t}"`;
+  const fl = orig ? "" : `filter:${l.f};`;
+  return `<div class="pic" ${st}><img loading="lazy" draggable="false" alt="${title}, ${l.n}" style="${fl}" src="${W(file)}" onerror="var p=this.parentNode;this.remove();p.insertAdjacentHTML('beforeend','<div class=fallback>${title.replace(/'/g, "")}</div>')"><span class="tint"></span></div>`;
+}
+
+/* ---------- intro ---------- */
+const typed = $("#typed"), pyr = $("#pyr"), intro = $("#intro");
+let introDone = false, typeTimer = 0;
+function startIntro() {
+  const txt = T[lang].intro; let k = 0;
+  typed.style.opacity = 1;
+  typed.innerHTML = '<span></span><i></i>';
+  const span = typed.firstChild;
+  typeTimer = setInterval(() => { span.textContent = txt.slice(0, ++k); if (k >= txt.length) { clearInterval(typeTimer); setTimeout(pyramid, 900); } }, 34);
+}
+function pyramid() {
+  if (introDone) return;
+  typed.style.opacity = 0; typed.style.transition = "opacity .5s";
+  const rows = [1, 2, 5, 3], gap = 52; let n = 0; pyr.innerHTML = "";
+  rows.forEach((c, r) => { for (let j = 0; j < c; j++) {
+    const x = (j - (c - 1) / 2) * gap, y = (r - 1.5) * gap, it = items[(n * 5) % items.length];
+    const d = document.createElement("div"); d.className = "pt"; d.style.left = x + "px"; d.style.top = y + "px"; d.style.setProperty("--dx", x * 0.6 + "px"); d.style.setProperty("--dy", y * 0.6 + "px");
+    d.innerHTML = pic(it); pyr.appendChild(d);
+    setTimeout(() => d.classList.add("on"), 150 + n * 110); n++;
+  } });
+  setTimeout(finishIntro, 150 + n * 110 + 1100);
+}
+function finishIntro() {
+  if (introDone) return; introDone = true; clearInterval(typeTimer);
+  pyr.classList.add("out"); intro.classList.add("gone");
+  document.body.classList.add("ready"); settle();
+  setTimeout(() => { intro.style.display = "none"; }, 1000);
+}
+$("#skip").onclick = finishIntro;
+
+/* ---------- the field: an endless board, dragged with mouse, finger or trackpad ---------- */
+const field = $("#field");
+let K = 1, PW = 0, PH = 0, els = [], px = 0, py = 0, vx = 0, vy = 0, dragging = false, last = null, drift = true, moved = 0;
+const COLS = 8, ROWS = 6;
+const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function build() {
+  K = Math.max(.7, Math.min(1.25, innerWidth / 1280));
+  const CW = 205 * K, CH = 190 * K; PW = COLS * CW; PH = ROWS * CH;
+  const cx = Math.ceil((innerWidth + 300) / PW) + 1, cy = Math.ceil((innerHeight + 300) / PH) + 1;
+  field.innerHTML = ""; els = [];
+  for (let ky = 0; ky < cy; ky++) for (let kx = 0; kx < cx; kx++) items.forEach((it, i) => {
+    const c = i % COLS, r = Math.floor(i / COLS), s = (62 + Math.floor(rnd(i) * 4) * 16) * K;
+    const bx = c * CW + (rnd(i + 9) - .5) * CW * .55 + CW * .2, by = r * CH + (rnd(i + 21) - .5) * CH * .55 + CH * .25;
+    const a = document.createElement("a"); a.className = "tile"; a.tabIndex = 0; a.dataset.i = i;
+    a.style.width = s + "px"; a.style.height = s + "px"; a.setAttribute("role", "button");
+    a.innerHTML = `<span class="lab"><b>${num(i)}</b><span>${it.l.n}</span></span>` + pic(it);
+    field.appendChild(a); els.push({ a, bx, by, kx, ky, i, s, depth: .85 + rnd(i + 3) * .3, d: Math.hypot(bx - innerWidth / 2, by - innerHeight / 2) });
+  });
+  place();
+}
+const mod = (v, m) => ((v % m) + m) % m;
+function place() {
+  for (const e of els) {
+    const x = mod(e.bx + px * e.depth, PW) - 150 + e.kx * PW;
+    const y = mod(e.by + py * e.depth, PH) - 150 + e.ky * PH;
+    e.a.style.transform = `translate3d(${x}px,${y}px,0)`;
+  }
+}
+function settle() { els.forEach(e => { e.a.style.transitionDelay = Math.min(900, e.d * 0.9) + "ms"; }); setTimeout(() => els.forEach(e => e.a.style.transitionDelay = ""), 2000); }
+function frame() {
+  if (document.body.classList.contains("v-grid") && !(dragging)) {
+    if (vx || vy) { px += vx; py += vy; vx *= .94; vy *= .94; if (Math.abs(vx) < .02) vx = 0; if (Math.abs(vy) < .02) vy = 0; place(); }
+    else if (drift && document.body.classList.contains("ready")) { px += .12; py += .06; place(); }
+  }
+  requestAnimationFrame(frame);
+}
+field.addEventListener("pointerdown", e => { dragging = true; drift = false; moved = 0; last = [e.clientX, e.clientY]; field.classList.add("drag"); vx = vy = 0; field.setPointerCapture(e.pointerId); });
+field.addEventListener("pointermove", e => { if (!dragging) return; const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY]; px += dx; py += dy; vx = dx; vy = dy; moved += Math.abs(dx) + Math.abs(dy); place(); });
+field.addEventListener("pointerup", e => { if (!dragging) return; dragging = false; field.classList.remove("drag"); if (moved < 6) { const t = document.elementFromPoint(e.clientX, e.clientY); const tile = t && t.closest && t.closest(".tile"); if (tile) openObra(+tile.dataset.i); } });
+field.addEventListener("pointercancel", () => { dragging = false; field.classList.remove("drag"); });
+field.addEventListener("wheel", e => { e.preventDefault(); drift = false; px -= e.deltaX; py -= e.deltaY; vx = -e.deltaX * .2; vy = -e.deltaY * .2; place(); }, { passive: false });
+field.addEventListener("keydown", e => { const m = { ArrowLeft: [60, 0], ArrowRight: [-60, 0], ArrowUp: [0, 60], ArrowDown: [0, -60] }[e.key]; if (m) { vx += m[0] / 6; vy += m[1] / 6; drift = false; } if (e.key === "Enter" && e.target.dataset && e.target.dataset.i) openObra(+e.target.dataset.i); });
+
+/* ---------- views ---------- */
+function setView(v) {
+  document.body.className = document.body.className.replace(/v-\w+/g, "").trim() + " v-" + v;
+  $$("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+  $("#filtb").style.display = v === "rows" ? "" : "none";
+  if (v === "gal") gal(0);
+}
+$$("[data-view]").forEach(b => b.onclick = () => setView(b.dataset.view));
+$("#home").onclick = e => { e.preventDefault(); setView("grid"); };
+
+/* list: search + filters */
+const chips = $("#chips"), rowsEl = $("#rows"), q = $("#q");
+function drawList() {
+  const t = q.value.trim().toLowerCase(), on = $$("#chips input:checked").map(i => i.value);
+  const list = items.filter(it => (!t || (it.l.n + " " + it.a[1] + " " + it.a[2]).toLowerCase().includes(t)) && (!on.length || on.includes(it.l.tag)));
+  $("#count").textContent = T[lang].found(list.length);
+  rowsEl.innerHTML = list.map(it => `<button class="row" data-i="${it.i}"><span class="n">${num(it.i)}</span><span>${it.l.n} - ${it.a[1]}</span><span class="s">${it.a[2]}</span></button>`).join("");
+}
+q.oninput = drawList; chips.onchange = drawList;
+rowsEl.onclick = e => { const r = e.target.closest(".row"); if (r) openObra(+r.dataset.i); };
+$("#filtb").onclick = () => chips.classList.toggle("open");
+
+/* gallery: one at a time */
+let gi = 0;
+function gal(d) { gi = mod(gi + d, items.length); const it = items[gi]; $("#gbig").innerHTML = pic(it) + `<div class="cap"><span>${num(gi)} · ${it.l.n}</span><span>${it.a[1]}</span></div>`; $("#gbig").onclick = () => openObra(gi); }
+$("#gp").onclick = () => gal(-1); $("#gn").onclick = () => gal(1);
+addEventListener("keydown", e => {
+  if (e.key === "Escape") closeSheets();
+  if (document.body.classList.contains("v-gal") && !$("#obra").classList.contains("open")) { if (e.key === "ArrowRight") gal(1); if (e.key === "ArrowLeft") gal(-1); }
+});
+let sx = 0; $("#galv").addEventListener("touchstart", e => sx = e.touches[0].clientX, { passive: true });
+$("#galv").addEventListener("touchend", e => { const d = e.changedTouches[0].clientX - sx; if (Math.abs(d) > 40) gal(d < 0 ? 1 : -1); });
+
+/* the single work */
+function openObra(i) {
+  const it = items[i];
+  $("#obox").innerHTML = pic(it) + `<div class="meta"><span>${num(i)}</span><span>${it.l.n}</span><span>${it.a[1]}, ${it.a[2]}</span></div><button class="hold" id="hold">${T[lang].orig}</button>`;
+  const h = $("#hold"), show = o => { $("#obox .pic").outerHTML = pic(it, o); };
+  h.addEventListener("pointerdown", () => show(true));
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => h.addEventListener(ev, () => show(false)));
+  $("#obra").classList.add("open");
+}
+function closeSheets() { $("#obra").classList.remove("open"); $("#about").classList.remove("open"); }
+$("#ox").onclick = closeSheets; $("#ax").onclick = closeSheets;
+$("#aboutb").onclick = () => $("#about").classList.add("open");
+
+/* language */
+function applyLang() {
+  document.documentElement.lang = lang;
+  $$("[data-t]").forEach(e => { const v = T[lang][e.dataset.t]; if (typeof v === "string") e.textContent = v; });
+  $$("[data-tp]").forEach(e => e.placeholder = T[lang][e.dataset.tp]);
+  $$("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  $("#foot").textContent = T[lang].foot;
+  chips.innerHTML = Object.keys(TAGS[lang]).map(k => `<label><input type="checkbox" value="${k}"><span>${TAGS[lang][k]}</span></label>`).join("");
+  drawList();
+}
+$$("[data-lang]").forEach(b => b.onclick = () => { lang = b.dataset.lang; applyLang(); if (!introDone) { clearInterval(typeTimer); startIntro(); } });
+addEventListener("resize", () => build());
+
+applyLang(); build(); setView("grid"); startIntro(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
